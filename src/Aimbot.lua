@@ -13,8 +13,6 @@ local Vector2new, Vector3zero, CFramenew, Color3fromRGB, Color3fromHSV, Drawingn
 local getupvalue, mousemoverel, tablefind, tableremove, stringlower, stringsub, mathclamp = debug.getupvalue, mousemoverel or (Input and Input.MouseMove), table.find, table.remove, string.lower, string.sub, math.clamp
 
 local GameMetatable = getrawmetatable and getrawmetatable(game) or {
-	-- Auxillary functions - if the executor doesn't support "getrawmetatable".
-
 	__index = function(self, Index)
 		return self[Index]
 	end,
@@ -34,7 +32,7 @@ local GetService = __index(game, "GetService")
 --// Services
 
 local RunService = GetService(game, "RunService")
-local UserInputService = GetService(game, "UserInputService")
+local UserInputService = GetService(game, "User InputService")
 local TweenService = GetService(game, "TweenService")
 local Players = GetService(game, "Players")
 
@@ -47,42 +45,12 @@ local FindFirstChild, FindFirstChildOfClass = __index(game, "FindFirstChild"), _
 local GetDescendants = __index(game, "GetDescendants")
 local WorldToViewportPoint = __index(Camera, "WorldToViewportPoint")
 local GetPartsObscuringTarget = __index(Camera, "GetPartsObscuringTarget")
-local GetMouseLocation = __index(UserInputService, "GetMouseLocation")
 local GetPlayers = __index(Players, "GetPlayers")
 
 --// Variables
 
 local RequiredDistance, Typing, Running, ServiceConnections, Animation, OriginalSensitivity = 2000, false, false, {}
 local Connect, Disconnect = __index(game, "DescendantAdded").Connect
-
---[[
-local Degrade = false
-
-do
-	xpcall(function()
-		local TemporaryDrawing = Drawingnew("Line")
-		getrenderproperty = getupvalue(getmetatable(TemporaryDrawing).__index, 4)
-		setrenderproperty = getupvalue(getmetatable(TemporaryDrawing).__newindex, 4)
-		TemporaryDrawing.Remove(TemporaryDrawing)
-	end, function()
-		Degrade, getrenderproperty, setrenderproperty = true, function(Object, Key)
-			return Object[Key]
-		end, function(Object, Key, Value)
-			Object[Key] = Value
-		end
-	end)
-
-	local TemporaryConnection = Connect(__index(game, "DescendantAdded"), function() end)
-	Disconnect = TemporaryConnection.Disconnect
-	Disconnect(TemporaryConnection)
-end
-]]
-
---// Checking for multiple processes
-
-if ExunysDeveloperAimbot and ExunysDeveloperAimbot.Exit then
-	ExunysDeveloperAimbot:Exit()
-end
 
 --// Environment
 
@@ -109,7 +77,7 @@ getgenv().ExunysDeveloperAimbot = {
 		LockMode = 1, -- 1 = CFrame; 2 = mousemoverel
 		LockPart = "Head", -- Body part to lock on
 
-		TriggerKey = Enum.UserInputType.MouseButton2,
+		TriggerKey = Enum.UserInputType.Touch, -- Alterado para Touch
 		Toggle = false
 	},
 
@@ -170,7 +138,7 @@ end
 local CancelLock = function()
 	Environment.Locked = nil
 
-	local FOVCircle = Environment.FOVCircle--Degrade and Environment.FOVCircle or Environment.FOVCircle.__OBJECT
+	local FOVCircle = Environment.FOVCircle
 
 	setrenderproperty(FOVCircle, "Color", Environment.FOVSettings.Color)
 	__newindex(UserInputService, "MouseDeltaSensitivity", OriginalSensitivity)
@@ -233,12 +201,6 @@ local Load = function()
 
 	local Settings, FOVCircle, FOVCircleOutline, FOVSettings, Offset = Environment.Settings, Environment.FOVCircle, Environment.FOVCircleOutline, Environment.FOVSettings
 
-	--[[
-	if not Degrade then
-		FOVCircle, FOVCircleOutline = FOVCircle.__OBJECT, FOVCircleOutline.__OBJECT
-	end
-	]]
-
 	ServiceConnections.RenderSteppedConnection = Connect(__index(RunService, Environment.DeveloperSettings.UpdateMode), function()
 		local OffsetToMoveDirection, LockPart = Settings.OffsetToMoveDirection, Settings.LockPart
 
@@ -254,12 +216,19 @@ local Load = function()
 				end
 			end
 
+			-- Calcular o centro da tela
+			local screenSize = workspace.CurrentCamera.ViewportSize
+			local centerX = screenSize.X / 2
+			local centerY = screenSize.Y / 2
+
+			-- Ajustar a posição do FOV para o centro da tela, levemente acima no eixo Y
+			setrenderproperty(FOVCircle, "Position", Vector2new(centerX, centerY - 10)) -- Ajuste o valor -10 conforme necessário
+			setrenderproperty(FOVCircleOutline, "Position", Vector2new(centerX, centerY - 10)) -- Ajuste o valor -10 conforme necessário
+
 			setrenderproperty(FOVCircle, "Color", (Environment.Locked and FOVSettings.LockedColor) or FOVSettings.RainbowColor and GetRainbowColor() or FOVSettings.Color)
 			setrenderproperty(FOVCircleOutline, "Color", FOVSettings.RainbowOutlineColor and GetRainbowColor() or FOVSettings.OutlineColor)
 
 			setrenderproperty(FOVCircleOutline, "Thickness", FOVSettings.Thickness + 1)
-			setrenderproperty(FOVCircle, "Position", GetMouseLocation(UserInputService))
-			setrenderproperty(FOVCircleOutline, "Position", GetMouseLocation(UserInputService))
 		else
 			setrenderproperty(FOVCircle, "Visible", false)
 			setrenderproperty(FOVCircleOutline, "Visible", false)
@@ -275,7 +244,7 @@ local Load = function()
 				local LockedPosition = WorldToViewportPoint(Camera, LockedPosition_Vector3 + Offset)
 
 				if Environment.Settings.LockMode == 2 then
-					mousemoverel((LockedPosition.X - GetMouseLocation(UserInputService).X) / Settings.Sensitivity2, (LockedPosition.Y - GetMouseLocation(UserInputService).Y) / Settings.Sensitivity2)
+					mousemoverel((LockedPosition.X - centerX) / Settings.Sensitivity2, (LockedPosition.Y - (centerY - 10)) / Settings.Sensitivity2) -- Ajuste para o centro
 				else
 					if Settings.Sensitivity > 0 then
 						Animation = TweenService:Create(Camera, TweenInfonew(Environment.Settings.Sensitivity, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {CFrame = CFramenew(Camera.CFrame.Position, LockedPosition_Vector3)})
